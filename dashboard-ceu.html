@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Dashboard CEU — Atividades & Turmas</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; color: #1a1a2e; }
+
+  header {
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 60%, #0f3460 100%);
+    color: white; padding: 28px 40px;
+    display: flex; justify-content: space-between; align-items: center;
+    flex-wrap: wrap; gap: 12px;
+  }
+  header h1 { font-size: 1.5rem; font-weight: 700; }
+  header p  { font-size: 0.82rem; opacity: 0.65; margin-top: 4px; }
+  #last-update { font-size: 0.78rem; opacity: 0.6; text-align: right; }
+
+  .container { max-width: 1200px; margin: 0 auto; padding: 28px 20px; }
+
+  .status-bar {
+    background: white; border-radius: 10px; padding: 11px 18px;
+    margin-bottom: 22px; display: flex; align-items: center; gap: 10px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06); font-size: 0.85rem; color: #374151;
+  }
+  .dot { width: 10px; height: 10px; border-radius: 50%; background: #d1d5db; flex-shrink:0; }
+  .dot.loading { background: #f59e0b; animation: blink 1s infinite; }
+  .dot.ok      { background: #22c55e; }
+  .dot.error   { background: #ef4444; }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.25} }
+
+  /* KPI grid */
+  .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px,1fr)); gap: 14px; margin-bottom: 22px; }
+  .kpi {
+    background: white; border-radius: 12px; padding: 20px 18px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.07); border-top: 4px solid #e5e7eb;
+  }
+  .kpi.c1 { border-top-color: #3b82f6; }
+  .kpi.c2 { border-top-color: #8b5cf6; }
+  .kpi.c3 { border-top-color: #0f3460; }
+  .kpi.c4 { border-top-color: #22c55e; }
+  .kpi.c5 { border-top-color: #f59e0b; }
+  .kpi-lbl { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.8px; color: #9ca3af; margin-bottom: 8px; }
+  .kpi-val { font-size: 1.9rem; font-weight: 800; color: #1a1a2e; line-height: 1; }
+  .kpi-sub { font-size: 0.76rem; color: #9ca3af; margin-top: 5px; }
+
+  /* Sections */
+  .sec { background: white; border-radius: 12px; padding: 22px; margin-bottom: 22px; box-shadow: 0 2px 8px rgba(0,0,0,0.07); }
+  .sec h2 { font-size: 0.95rem; font-weight: 700; color: #111827; margin-bottom: 16px; padding-bottom: 10px; border-bottom: 2px solid #f3f4f6; }
+
+  /* Table */
+  table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+  th { background: #f8fafc; color: #6b7280; font-weight: 700; text-transform: uppercase; font-size: 0.7rem; letter-spacing: 0.5px; padding: 9px 11px; text-align: left; }
+  td { padding: 9px 11px; border-bottom: 1px solid #f3f4f6; color: #374151; vertical-align: middle; }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: #fafafa; }
+
+  /* Bar */
+  .bw { background: #f3f4f6; border-radius: 4px; height: 7px; margin-top: 3px; }
+  .bf { height: 7px; border-radius: 4px; }
+  .bf.g { background: #22c55e; }
+  .bf.a { background: #f59e0b; }
+  .bf.r { background: #ef4444; }
+  .bf.b { background: #3b82f6; }
+
+  /* Badge */
+  .badge { display:inline-block; padding:2px 9px; border-radius:20px; font-size:0.7rem; font-weight:700; }
+  .bg-g { background:#dcfce7; color:#15803d; }
+  .bg-a { background:#fef9c3; color:#92400e; }
+  .bg-r { background:#fee2e2; color:#b91c1c; }
+  .bg-b { background:#dbeafe; color:#1d4ed8; }
+
+  /* Insight boxes */
+  .ib { border-radius: 7px; padding: 13px 15px; margin-bottom: 11px; font-size: 0.86rem; line-height: 1.6; border-left: 4px solid; }
+  .ib-b { background:#eff6ff; border-color:#3b82f6; color:#1e3a5f; }
+  .ib-g { background:#f0fdf4; border-color:#22c55e; color:#14532d; }
+  .ib-a { background:#fffbeb; border-color:#f59e0b; color:#78350f; }
+  .ib-r { background:#fff1f2; border-color:#ef4444; color:#881337; }
+
+  /* Chart bars */
+  .chart-row { margin-bottom: 13px; }
+  .chart-label { display:flex; justify-content:space-between; font-size:0.81rem; margin-bottom:3px; }
+  .chart-label strong { color:#111827; max-width:70%; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
+  .chart-label span   { color:#6b7280; }
+
+  /* Ocupation ring-like indicator */
+  .ocup-big { text-align:center; padding: 10px 0; }
+  .ocup-num { font-size: 3rem; font-weight: 800; }
+  .ocup-lbl { font-size: 0.85rem; color: #6b7280; margin-top: 4px; }
+
+  #loading-msg { text-align:center; padding:60px; color:#6b7280; font-size:0.95rem; }
+  #error-msg   { display:none; text-align:center; padding:40px; }
+  #error-msg p { color:#ef4444; font-size:0.92rem; margin-bottom:8px; }
+  #error-msg small { color:#6b7280; font-size:0.78rem; }
+
+  footer { text-align:center; font-size:0.73rem; color:#9ca3af; padding:18px; }
+
+  @media(max-width:640px){
+    header { padding: 20px; }
+    .kpi-val { font-size: 1.5rem; }
+    th, td { padding: 7px 8px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>📊 Dashboard CEU — Atividades & Turmas</h1>
+    <p>Dados ao vivo · Google Sheets · Atualiza a cada abertura</p>
+  </div>
+  <div id="last-update">—</div>
+</header>
+
+<div class="container">
+
+  <div class="status-bar">
+    <div class="dot loading" id="sdot"></div>
+    <span id="stxt">Conectando à planilha...</span>
+  </div>
+
+  <div id="loading-msg">⏳ Carregando dados da planilha...</div>
+  <div id="error-msg">
+    <p>⚠️ Não foi possível carregar os dados.</p>
+    <small>Verifique se a planilha está publicada: <br/>Arquivo → Publicar na Web → Formato CSV</small>
+  </div>
+
+  <div id="dashboard" style="display:none">
+    <div class="kpi-grid" id="kpis"></div>
+
+    <div style="display:grid;grid-template-columns:1fr 2fr;gap:16px;margin-bottom:22px" id="top-split">
+      <div class="sec" style="display:flex;flex-direction:column;justify-content:center;align-items:center">
+        <h2 style="text-align:center">🎯 Ocupação Geral</h2>
+        <div class="ocup-big">
+          <div class="ocup-num" id="ocup-big-num">—</div>
+          <div class="ocup-lbl">das vagas preenchidas</div>
+        </div>
+        <div class="bw" style="width:100%;height:14px;border-radius:7px;margin-top:16px">
+          <div class="bf" id="ocup-big-bar" style="height:14px;border-radius:7px;width:0%"></div>
+        </div>
+      </div>
+      <div class="sec">
+        <h2>📈 Ocupação por Atividade</h2>
+        <div id="chart"></div>
+      </div>
+    </div>
+
+    <div class="sec">
+      <h2>📋 Detalhamento por Turma</h2>
+      <div style="overflow-x:auto">
+        <table>
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Atividade</th>
+              <th>Descrição / Modalidade</th>
+              <th>Turma</th>
+              <th>Vagas</th>
+              <th>Alunos</th>
+              <th>Ocupação</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="sec">
+      <h2>💡 Insights Estratégicos</h2>
+      <div id="insights"></div>
+    </div>
+
+    <div class="sec">
+      <h2>🔍 Auditoria da Base</h2>
+      <table id="audit-table"></table>
+    </div>
+  </div>
+</div>
+
+<footer>Dashboard gerado automaticamente · Fonte: Google Sheets · Joinville · <span id="footer-date"></span></footer>
+
+<script>
+// ── CONFIG ──────────────────────────────────────────────────────
+const CSV_URL   = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRow3QuTKUfgN-Alrbq_tTOU_eQMNpQoHnJanlkcJ1B-_W8Haye88bwA1mZLSRCOy35PZ0nmbSdUV2m/pub?gid=0&single=true&output=csv";
+const SKIP_ROWS = 24; // linhas 1–24 = cronograma; dados a partir da linha 25
+
+// ── HELPERS ─────────────────────────────────────────────────────
+function parseCSV(text) {
+  return text.split(/\r?\n/).map(line => {
+    const cols = []; let cur = '', inQ = false;
+    for (const c of line) {
+      if (c === '"') { inQ = !inQ; }
+      else if (c === ',' && !inQ) { cols.push(cur.trim()); cur = ''; }
+      else cur += c;
+    }
+    cols.push(cur.trim());
+    return cols;
+  });
+}
+
+const toNum = v => {
+  if (!v) return null;
+  const n = parseFloat(String(v).replace(/[^\d.,-]/g,'').replace(',','.'));
+  return isNaN(n) ? null : n;
+};
+
+const pct = (a, b) => b > 0 ? Math.round((a / b) * 100) : 0;
+
+function barColor(p) {
+  if (p >= 85) return 'g';
+  if (p >= 55) return 'a';
+  return 'r';
+}
+
+function ocupColor(p) {
+  if (p >= 85) return '#22c55e';
+  if (p >= 55) return '#f59e0b';
+  return '#ef4444';
+}
+
+function badgeHTML(p) {
+  if (p >= 85) return `<span class="badge bg-g">Alta ${p}%</span>`;
+  if (p >= 55) return `<span class="badge bg-a">Média ${p}%</span>`;
+  return `<span class="badge bg-r">Baixa ${p}%</span>`;
+}
+
+function findCol(header, ...terms) {
+  return header.findIndex(h => terms.some(t => h.toLowerCase().includes(t)));
+}
+
+// ── RENDER ───────────────────────────────────────────────────────
+function render(allRows) {
+  const dataRows = allRows.slice(SKIP_ROWS);
+  const header   = dataRows[0] || [];
+  const body     = dataRows.slice(1).filter(r => r[3] && r[3].trim() !== '');
+
+  // Detectar colunas pelo cabeçalho
+  const C = {
+    D:     3,
+    E:     4,
+    H:     7,
+    vagas: findCol(header, 'vaga'),
+    aluno: findCol(header, 'aluno', 'matricul', 'inscrit'),
+  };
+
+  // Montar registros
+  let totalVagas = 0, totalAlunos = 0;
+  const ativMap = {};
+  const turmas  = new Set();
+
+  const rows = body.map(r => {
+    const ativ   = r[C.D] || '—';
+    const desc   = r[C.E] || '—';
+    const turma  = r[C.H] || '—';
+    const vagas  = C.vagas  >= 0 ? toNum(r[C.vagas])  : null;
+    const alunos = C.aluno  >= 0 ? toNum(r[C.aluno])  : null;
+
+    if (turma !== '—') turmas.add(turma);
+    if (vagas  !== null) totalVagas  += vagas;
+    if (alunos !== null) totalAlunos += alunos;
+
+    if (!ativMap[ativ]) ativMap[ativ] = { vagas: 0, alunos: 0 };
+    if (vagas  !== null) ativMap[ativ].vagas  += vagas;
+    if (alunos !== null) ativMap[ativ].alunos += alunos;
+
+    return { ativ, desc, turma, vagas, alunos };
+  });
+
+  const ocupGeral = pct(totalAlunos, totalVagas);
+  const nAtiv     = Object.keys(ativMap).length;
+
+  // ── KPIs ──
+  document.getElementById('kpis').innerHTML = `
+    <div class="kpi c1"><div class="kpi-lbl">Atividades</div><div class="kpi-val">${nAtiv}</div><div class="kpi-sub">modalidades distintas</div></div>
+    <div class="kpi c2"><div class="kpi-lbl">Turmas</div><div class="kpi-val">${turmas.size}</div><div class="kpi-sub">turmas cadastradas</div></div>
+    <div class="kpi c3"><div class="kpi-lbl">Total de Vagas</div><div class="kpi-val">${totalVagas.toLocaleString('pt-BR')}</div><div class="kpi-sub">capacidade instalada</div></div>
+    <div class="kpi c4"><div class="kpi-lbl">Alunos Matriculados</div><div class="kpi-val">${totalAlunos.toLocaleString('pt-BR')}</div><div class="kpi-sub">ocupação: ${ocupGeral}%</div></div>
+    <div class="kpi c5"><div class="kpi-lbl">Vagas Disponíveis</div><div class="kpi-val">${(totalVagas - totalAlunos).toLocaleString('pt-BR')}</div><div class="kpi-sub">posições em aberto</div></div>
+  `;
+
+  // ── Ocupação grande ──
+  const ocNum = document.getElementById('ocup-big-num');
+  ocNum.textContent = ocupGeral + '%';
+  ocNum.style.color = ocupColor(ocupGeral);
+  const bar = document.getElementById('ocup-big-bar');
+  bar.style.width = Math.min(ocupGeral, 100) + '%';
+  bar.className = `bf ${barColor(ocupGeral)}`;
+  bar.style.height = '14px'; bar.style.borderRadius = '7px';
+
+  // ── Gráfico por atividade ──
+  const chart = document.getElementById('chart');
+  chart.innerHTML = Object.entries(ativMap).sort((a,b) => {
+    return pct(b[1].alunos, b[1].vagas) - pct(a[1].alunos, a[1].vagas);
+  }).map(([nome, v]) => {
+    const p = pct(v.alunos, v.vagas);
+    return `
+      <div class="chart-row">
+        <div class="chart-label">
+          <strong title="${nome}">${nome}</strong>
+          <span>${v.alunos}/${v.vagas} · ${p}%</span>
+        </div>
+        <div class="bw"><div class="bf ${barColor(p)}" style="width:${Math.min(p,100)}%"></div></div>
+      </div>`;
+  }).join('');
+
+  // ── Tabela ──
+  document.getElementById('tbody').innerHTML = rows.map((r, i) => {
+    const p = (r.vagas && r.alunos !== null) ? pct(r.alunos, r.vagas) : null;
+    return `<tr>
+      <td style="color:#9ca3af">${i+1}</td>
+      <td><strong>${r.ativ}</strong></td>
+      <td>${r.desc}</td>
+      <td><span class="badge bg-b">${r.turma}</span></td>
+      <td>${r.vagas ?? '—'}</td>
+      <td>${r.alunos ?? '—'}</td>
+      <td>${p !== null ? `<div style="font-size:.78rem;font-weight:700;margin-bottom:2px">${p}%</div><div class="bw"><div class="bf ${barColor(p)}" style="width:${Math.min(p,100)}%"></div></div>` : '—'}</td>
+      <td>${p !== null ? badgeHTML(p) : '—'}</td>
+    </tr>`;
+  }).join('');
+
+  // ── Insights ──
+  const alta  = Object.entries(ativMap).filter(([,v]) => pct(v.alunos,v.vagas) >= 85);
+  const baixa = Object.entries(ativMap).filter(([,v]) => v.vagas > 0 && pct(v.alunos,v.vagas) < 55);
+  const cheia = Object.entries(ativMap).filter(([,v]) => v.vagas > 0 && pct(v.alunos,v.vagas) >= 100);
+
+  let ins = '';
+  if (cheia.length)
+    ins += `<div class="ib ib-r">🚫 <strong>Vagas esgotadas:</strong> ${cheia.map(([n])=>n).join(', ')}. Considere abertura de novas turmas para atender demanda reprimida.</div>`;
+  if (alta.length)
+    ins += `<div class="ib ib-g">✅ <strong>Alta ocupação (≥85%):</strong> ${alta.map(([n])=>n).join(', ')}. Atividades com forte aderência — avaliar expansão de vagas.</div>`;
+  if (baixa.length)
+    ins += `<div class="ib ib-a">⚠️ <strong>Baixa ocupação (&lt;55%):</strong> ${baixa.map(([n])=>n).join(', ')}. Revisar divulgação, horários ou demanda real.</div>`;
+  if (ocupGeral >= 80)
+    ins += `<div class="ib ib-g">📈 Ocupação geral de <strong>${ocupGeral}%</strong> indica boa utilização da capacidade instalada.</div>`;
+  else if (ocupGeral < 60)
+    ins += `<div class="ib ib-a">📉 Ocupação geral de <strong>${ocupGeral}%</strong> está abaixo de 60%. Recomenda-se revisão das estratégias de captação.</div>`;
+  if (!ins)
+    ins = `<div class="ib ib-b">ℹ️ Dados carregados com sucesso. Nenhum alerta crítico identificado automaticamente.</div>`;
+
+  document.getElementById('insights').innerHTML = ins;
+
+  // ── Auditoria ──
+  document.getElementById('audit-table').innerHTML = `
+    <tr><td><strong>Linhas ignoradas (cronograma)</strong></td><td>${SKIP_ROWS}</td></tr>
+    <tr><td><strong>Linhas de dados processadas</strong></td><td>${rows.length}</td></tr>
+    <tr><td><strong>Atividades distintas (col D)</strong></td><td>${nAtiv}</td></tr>
+    <tr><td><strong>Turmas distintas (col H)</strong></td><td>${turmas.size}</td></tr>
+    <tr><td><strong>Total de vagas</strong></td><td>${totalVagas}</td></tr>
+    <tr><td><strong>Total de alunos</strong></td><td>${totalAlunos}</td></tr>
+    <tr><td><strong>Vagas em aberto</strong></td><td>${totalVagas - totalAlunos}</td></tr>
+    <tr><td><strong>Ocupação geral</strong></td><td>${ocupGeral}%</td></tr>
+    <tr><td><strong>Col Vagas detectada</strong></td><td>${C.vagas >= 0 ? `Coluna ${String.fromCharCode(65+C.vagas)} (idx ${C.vagas}) — "${header[C.vagas]}"` : 'Não detectada'}</td></tr>
+    <tr><td><strong>Col Alunos detectada</strong></td><td>${C.aluno >= 0 ? `Coluna ${String.fromCharCode(65+C.aluno)} (idx ${C.aluno}) — "${header[C.aluno]}"` : 'Não detectada'}</td></tr>
+    <tr><td><strong>URL fonte</strong></td><td style="word-break:break-all;font-size:0.72rem;color:#6b7280">${CSV_URL}</td></tr>
+  `;
+}
+
+// ── FETCH ────────────────────────────────────────────────────────
+async function load() {
+  try {
+    const res  = await fetch(CSV_URL + `&t=${Date.now()}`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const text = await res.text();
+    const all  = parseCSV(text);
+
+    render(all);
+
+    document.getElementById('loading-msg').style.display = 'none';
+    document.getElementById('dashboard').style.display   = 'block';
+    document.getElementById('sdot').className  = 'dot ok';
+    document.getElementById('stxt').textContent = `Dados carregados com sucesso · ${all.length} linhas lidas da planilha`;
+    const now = new Date().toLocaleString('pt-BR');
+    document.getElementById('last-update').textContent = `Última atualização: ${now}`;
+    document.getElementById('footer-date').textContent = now;
+
+  } catch(e) {
+    document.getElementById('loading-msg').style.display = 'none';
+    document.getElementById('error-msg').style.display   = 'block';
+    document.getElementById('sdot').className  = 'dot error';
+    document.getElementById('stxt').textContent = 'Erro ao carregar: ' + e.message;
+    document.getElementById('last-update').textContent = 'Falha na conexão';
+    console.error(e);
+  }
+}
+
+load();
+</script>
+</body>
+</html>
